@@ -1,2 +1,2 @@
 # NaturalInteractionVision-RAG
-A modular Faster R-CNN object detection and visual question answering system trained on COCO, with a pipeline designed for transfer to naturalistic child–caregiver interaction images and videos.
+An end-to-end Faster R-CNN–based object detection and visual question answering pipeline trained on COCO, intended for downstream analysis of naturalistic child–caregiver interaction imagery and video.
