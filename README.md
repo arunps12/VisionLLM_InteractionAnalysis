@@ -1,2 +1,2 @@
-# NaturalInteractionVision-RAG
-An end-to-end Faster R-CNN–based object detection and visual question answering pipeline trained on COCO, intended for downstream analysis of naturalistic child–caregiver interaction imagery and video.
+# VisionLLM_InteractionAnalysis
+End-to-end computer vision and LLM-based reasoning system using Faster R-CNN object detection and visual question answering, trained on COCO and intended for downstream analysis of naturalistic child–caregiver interaction imagery and video.
