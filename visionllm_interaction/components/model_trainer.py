@@ -358,7 +358,7 @@ class ModelTrainer:
 
             # Resolve output paths 
             best_model_path = os.path.join(self.config.model_trainer_dir, checkpoint_name)
-            last_model_path = self.config.last_model_file_path  # keep your constant name
+            last_model_path = self.config.last_model_file_path  
 
             # MLflow
             mlflow = self._setup_mlflow(model_cfg)

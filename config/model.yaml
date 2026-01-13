@@ -22,7 +22,7 @@ model:
 training:
   device: "auto"            # auto -> cuda if available else cpu
   seed: 42
-  epochs: 6
+  epochs: 1
   num_workers: 4
   pin_memory: true
 
@@ -69,7 +69,7 @@ hpo:
   framework: "optuna"         
   direction: "minimize"
   objective_metric: "val_loss"
-  n_trials: 10
+  n_trials: 5
   timeout_seconds: null
 
   sampler:
