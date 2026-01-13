@@ -99,7 +99,7 @@ flowchart TD
 - Reproducible experiments
 
 ---
-
+## Next stages
 ### **Stage 5: LLM-Based Reasoning**
 - Object-level symbolic representations
 - Promptable scene reasoning
