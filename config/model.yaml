@@ -1,0 +1,87 @@
+# =========================================================
+# VisionLLM Interaction Analysis - Model Training Config
+# =========================================================
+
+experiment:
+  name: "visionllm_interaction_frcnn_coco"
+  run_name_prefix: "frcnn_resnet50_fpn"
+
+
+# Use the training manifest produced by DataTransformation:
+# artifacts/<timestamp>/data_transformation/training_manifest.yaml
+data:
+  manifest_key: "training_manifest"   
+  require_val: true
+
+model:
+  type: "fasterrcnn_resnet50_fpn"
+  weights: "DEFAULT"
+  num_classes: 81  # COCO 80 + background
+  image_backend: "opencv"  # cv2
+
+training:
+  device: "auto"            # auto -> cuda if available else cpu
+  seed: 42
+  epochs: 6
+  num_workers: 4
+  pin_memory: true
+
+  # default training hyperparams (used if hpo.enabled=false)
+  optimizer:
+    name: "adam"
+    lr: 0.0001
+    weight_decay: 0.0
+
+  dataloader:
+    batch_size: 4
+    shuffle_train: true
+    shuffle_val: false
+
+  # limit dataset for quick sanity checks
+  debug:
+    enabled: false
+    max_train_images: null
+    max_val_images: null
+
+logging:
+  log_every_n_steps: 50
+  save_every_n_epochs: 1
+
+outputs:
+  # all outputs go inside artifacts/<timestamp>/model_trainer/
+  save_best_only: true
+  metric_to_monitor: "val_loss"
+  checkpoint_name: "fasterrcnn_best.pt"
+
+mlflow:
+  enabled: true
+  # Use env vars from .env 
+  tracking_uri_env: "MLFLOW_TRACKING_URI"
+  username_env: "MLFLOW_TRACKING_USERNAME"
+  password_env: "MLFLOW_TRACKING_PASSWORD"
+  experiment_name: "visionllm_interaction_frcnn"
+
+# =========================================================
+# Hyperparameter Optimization (HPO)
+# =========================================================
+hpo:
+  enabled: true
+  framework: "optuna"         
+  direction: "minimize"
+  objective_metric: "val_loss"
+  n_trials: 10
+  timeout_seconds: null
+
+  sampler:
+    name: "tpe"                
+    seed: 42
+
+  # Search space: define which hyperparameters to tune and their ranges
+  search_space:
+    batch_size:
+      type: "categorical"
+      values: [2, 4]
+    lr:
+      type: "loguniform"
+      low: 0.00001
+      high: 0.001

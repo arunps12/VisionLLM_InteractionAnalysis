@@ -4,9 +4,11 @@ from visionllm_interaction.entity.config_entity import (
     TrainingPipelineConfig,
     DataIngestionConfig,
     DataValidationConfig,
+    DataTransformationConfig,
 )
 from visionllm_interaction.components.data_ingestion import DataIngestion
 from visionllm_interaction.components.data_validation import DataValidation
+from visionllm_interaction.components.data_transformation import DataTransformation
 
 logger = get_logger(__name__)
 
@@ -18,6 +20,7 @@ def main():
     Stages:
       1) Data Ingestion (COCO train/val staging + manifest)
       2) Data Validation (COCO checks + validation report)
+      3) Data Transformation (clean annotations + training manifest)
     """
     try:
         logger.info("=== VisionLLM Interaction Analysis: Pipeline Started ===")
@@ -63,6 +66,27 @@ def main():
         logger.info("Data validation stage completed successfully.")
         logger.info(f"Validation report written to: {data_validation_artifact.report_file_path}")
         logger.info(f"DataValidationArtifact: {data_validation_artifact}")
+
+        # ------------------------------------------------------------
+        # 4) Data Transformation (clean annotations -> training manifest)
+        # ------------------------------------------------------------
+        data_transformation_config = DataTransformationConfig(training_pipeline_config)
+
+        logger.info("Starting data transformation stage...")
+        logger.info(f"Transformation dir: {data_transformation_config.data_transformation_dir}")
+
+        data_transformation = DataTransformation(
+            data_transformation_config=data_transformation_config,
+            data_ingestion_artifact=data_ingestion_artifact,
+            data_validation_artifact=data_validation_artifact,
+        )
+        data_transformation_artifact = data_transformation.initiate_data_transformation()
+
+        logger.info("Data transformation stage completed successfully.")
+        logger.info(f"Cleaned train ann: {data_transformation_artifact.cleaned_train_annotation_file}")
+        logger.info(f"Cleaned val ann: {data_transformation_artifact.cleaned_val_annotation_file}")
+        logger.info(f"Training manifest written to: {data_transformation_artifact.training_manifest_file_path}")
+        logger.info(f"DataTransformationArtifact: {data_transformation_artifact}")
 
         logger.info("=== VisionLLM Interaction Analysis: Pipeline Finished ===")
 

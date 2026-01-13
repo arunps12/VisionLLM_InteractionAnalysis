@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+from typing import Any, Dict, Optional
 
 @dataclass
 class DataIngestionArtifact:
@@ -16,8 +16,6 @@ class DataIngestionArtifact:
     dataset_format: str  # e.g. "raw"
 
 
-from dataclasses import dataclass
-
 
 @dataclass
 class DataValidationArtifact:
@@ -31,3 +29,38 @@ class DataValidationArtifact:
     data_validation_dir: str
     report_file_path: str
     validated: bool
+
+
+@dataclass
+class DataTransformationArtifact:
+    """
+    Artifact produced by Data Transformation stage.
+    """
+
+    data_transformation_dir: str
+    cleaned_train_annotation_file: str
+    cleaned_val_annotation_file: str
+    training_manifest_file_path: str
+    dropped_train_annotation_ids: int
+    dropped_val_annotation_ids: int
+
+
+@dataclass
+class ModelTrainerArtifact:
+    """
+    Artifact produced by Model Trainer stage.
+    """
+
+    model_trainer_dir: str
+    best_model_path: str
+    last_model_path: str
+    training_report_path: str
+
+    # key results
+    best_metric_name: str
+    best_metric_value: float
+
+    # HPO summary 
+    hpo_enabled: bool
+    best_params: Optional[Dict[str, Any]] = None
+    n_trials: Optional[int] = None

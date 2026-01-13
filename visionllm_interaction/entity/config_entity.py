@@ -24,6 +24,24 @@ from visionllm_interaction.constants.training_pipeline import (
     MAX_INVALID_BBOX_ALLOWED,
 )
 
+from visionllm_interaction.constants.training_pipeline import (
+    DATA_TRANSFORMATION_DIR_NAME,
+    DATA_TRANSFORMATION_ANNOTATION_DIR_NAME,
+    CLEANED_TRAIN_ANN_FILE_NAME,
+    CLEANED_VAL_ANN_FILE_NAME,
+    DATA_TRANSFORMATION_MANIFEST_FILE,
+)
+
+from visionllm_interaction.constants.training_pipeline import (
+    ARTIFACTS_DIR,
+    TRAINING_PIPELINE_NAME,
+    MODEL_TRAINER_DIR_NAME,
+    MODEL_CONFIG_FILE_PATH,
+    MODEL_TRAINER_REPORT_FILE_NAME,
+    MODEL_TRAINER_BEST_MODEL_FILE_NAME,
+    MODEL_TRAINER_LAST_MODEL_FILE_NAME,
+)
+
 class TrainingPipelineConfig:
     """
     Global training pipeline configuration.
@@ -123,4 +141,72 @@ class DataValidationConfig:
         self.max_invalid_bbox_allowed: int = MAX_INVALID_BBOX_ALLOWED
 
 
-        
+class DataTransformationConfig:
+    """
+    Configuration for Data Transformation stage.
+
+    This stage:
+    - reads ingestion manifest (raw paths)
+    - reads validation report to know which annotation IDs to drop
+    - writes cleaned COCO JSONs + training manifest
+    """
+
+    def __init__(self, training_pipeline_config: TrainingPipelineConfig):
+        self.data_transformation_dir: str = os.path.join(
+            training_pipeline_config.artifact_dir,
+            DATA_TRANSFORMATION_DIR_NAME,
+        )
+
+        self.cleaned_annotation_dir: str = os.path.join(
+            self.data_transformation_dir,
+            DATA_TRANSFORMATION_ANNOTATION_DIR_NAME,
+        )
+
+        self.cleaned_train_annotation_file: str = os.path.join(
+            self.cleaned_annotation_dir,
+            CLEANED_TRAIN_ANN_FILE_NAME,
+        )
+
+        self.cleaned_val_annotation_file: str = os.path.join(
+            self.cleaned_annotation_dir,
+            CLEANED_VAL_ANN_FILE_NAME,
+        )
+
+        self.training_manifest_file_path: str = os.path.join(
+            self.data_transformation_dir,
+            DATA_TRANSFORMATION_MANIFEST_FILE,
+        )
+
+
+class ModelTrainerConfig:
+    """
+    Configuration for Model Trainer stage.
+
+    Reads:
+      - config/model.yaml
+    Writes:
+      - artifacts/<timestamp>/model_trainer/
+    """
+
+    def __init__(self, training_pipeline_config: "TrainingPipelineConfig"):
+        self.model_trainer_dir: str = os.path.join(
+            training_pipeline_config.artifact_dir,
+            MODEL_TRAINER_DIR_NAME,
+        )
+
+        # model.yaml path 
+        self.model_config_file_path: str = MODEL_CONFIG_FILE_PATH
+
+        # outputs
+        self.report_file_path: str = os.path.join(
+            self.model_trainer_dir,
+            MODEL_TRAINER_REPORT_FILE_NAME,
+        )
+        self.best_model_file_path: str = os.path.join(
+            self.model_trainer_dir,
+            MODEL_TRAINER_BEST_MODEL_FILE_NAME,
+        )
+        self.last_model_file_path: str = os.path.join(
+            self.model_trainer_dir,
+            MODEL_TRAINER_LAST_MODEL_FILE_NAME,
+        )

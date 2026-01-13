@@ -84,3 +84,38 @@ DATA_VALIDATION_REPORT_FILE: str = "data_validation_report.yaml"
 # ==================================================
 DROP_INVALID_BBOX: bool = True
 MAX_INVALID_BBOX_ALLOWED: int = 100
+
+# ==================================================
+# DATA TRANSFORMATION STAGE
+# ==================================================
+
+DATA_TRANSFORMATION_DIR_NAME: str = "data_transformation"
+
+# Save cleaned COCO annotation JSONs here
+DATA_TRANSFORMATION_ANNOTATION_DIR_NAME: str = "annotations"
+
+# Cleaned filenames
+CLEANED_TRAIN_ANN_FILE_NAME: str = "instances_train2017.cleaned.json"
+CLEANED_VAL_ANN_FILE_NAME: str = "instances_val2017.cleaned.json"
+
+# New manifest produced for training
+DATA_TRANSFORMATION_MANIFEST_FILE: str = "training_manifest.yaml"
+
+# ==================================================
+# MODEL TRAINER STAGE
+# ==================================================
+
+MODEL_TRAINER_DIR_NAME: str = "model_trainer"
+
+# Config files
+MODEL_CONFIG_FILE_PATH: str = "config/model.yaml"
+
+# Outputs inside artifacts/<timestamp>/model_trainer/
+MODEL_TRAINER_REPORT_FILE_NAME: str = "training_report.yaml"
+MODEL_TRAINER_BEST_MODEL_FILE_NAME: str = "fasterrcnn_best.pt"
+MODEL_TRAINER_LAST_MODEL_FILE_NAME: str = "fasterrcnn_last.pt"
+
+# Training manifest produced by DataTransformation stage
+TRAINING_MANIFEST_FILE_NAME: str = "training_manifest.yaml"
+
+
