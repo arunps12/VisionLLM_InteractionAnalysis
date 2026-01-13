@@ -5,6 +5,8 @@ import time
 from typing import Any, Dict, List, Optional
 
 import cv2
+import dagshub
+import mlflow
 import optuna
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -243,44 +245,32 @@ class ModelTrainer:
             raise CustomException(f"Training manifest not found: {manifest_path}")
         return read_yaml(manifest_path)
 
-    def _setup_mlflow(self, model_cfg: Dict[str, Any]) -> Optional[Any]:
+    def _setup_mlflow(self, model_cfg: Dict[str, Any]):
         mlflow_cfg = model_cfg.get("mlflow", {}) or {}
         if not mlflow_cfg.get("enabled", False):
             logger.info("MLflow disabled in model.yaml")
             return None
 
         try:
-            import mlflow  
+            import dagshub
+            import mlflow
         except Exception as e:
-            raise CustomException("mlflow is enabled but not installed. Install mlflow.", e)
+            raise CustomException("dagshub or mlflow not installed.", e)
 
-        tracking_uri_env = mlflow_cfg.get("tracking_uri_env", "MLFLOW_TRACKING_URI")
-        username_env = mlflow_cfg.get("username_env", "MLFLOW_TRACKING_USERNAME")
-        password_env = mlflow_cfg.get("password_env", "MLFLOW_TRACKING_PASSWORD")
-
-        tracking_uri = os.environ.get(tracking_uri_env)
-        username = os.environ.get(username_env)
-        password = os.environ.get(password_env)
-
-        if not tracking_uri:
-            raise CustomException(f"Missing env var {tracking_uri_env} for MLflow tracking URI.")
-        if not username:
-            raise CustomException(f"Missing env var {username_env} for MLflow username.")
-        if not password:
-            raise CustomException(f"Missing env var {password_env} for MLflow password.")
-
-        
-        os.environ["MLFLOW_TRACKING_URI"] = tracking_uri
-        os.environ["MLFLOW_TRACKING_USERNAME"] = username
-        os.environ["MLFLOW_TRACKING_PASSWORD"] = password
-
-        mlflow.set_tracking_uri(tracking_uri)
-
-        exp_name = mlflow_cfg.get("experiment_name") or (model_cfg.get("experiment", {}) or {}).get("name", "default")
+        dagshub.init(
+                repo_owner="arunps12",
+                repo_name="VisionLLM_InteractionAnalysis",
+                mlflow=True,
+            )
+        exp_name = (
+            mlflow_cfg.get("experiment_name")
+            or model_cfg.get("experiment", {}).get("name", "default")
+        )
         mlflow.set_experiment(exp_name)
 
-        logger.info(f"MLflow enabled. tracking_uri={tracking_uri} experiment={exp_name}")
+        logger.info(f"MLflow enabled via DagsHub. Experiment={exp_name}")
         return mlflow
+
 
     @staticmethod
     def _validate_manifest_structure(manifest: Dict[str, Any]) -> None:

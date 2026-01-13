@@ -9,3 +9,5 @@ pyyaml
 tqdm
 python-dotenv
 optuna
+mlflow<2.17.0
+dagshub
