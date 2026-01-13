@@ -5,7 +5,7 @@
 ![COCO](https://img.shields.io/badge/Dataset-COCO--2017-blue)
 ![MLflow](https://img.shields.io/badge/Experiment-MLflow-green)
 ![DagsHub](https://img.shields.io/badge/Tracking-DagsHub-orange)
-![License](https://img.shields.io/badge/License-Apache--2.0-lightgrey)
+![License](https://img.shields.io/badge/License-MIT--2.0-lightgrey)
 
 End-to-end computer vision and LLM-based reasoning system using **Faster R-CNN** object detection, trained on **COCO**, and designed for downstream analysis of **naturalistic child–caregiver interaction imagery and video**.
 
