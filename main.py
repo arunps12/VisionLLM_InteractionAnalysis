@@ -3,8 +3,10 @@ from visionllm_interaction.exception.custom_exception import CustomException
 from visionllm_interaction.entity.config_entity import (
     TrainingPipelineConfig,
     DataIngestionConfig,
+    DataValidationConfig,
 )
 from visionllm_interaction.components.data_ingestion import DataIngestion
+from visionllm_interaction.components.data_validation import DataValidation
 
 logger = get_logger(__name__)
 
@@ -13,6 +15,9 @@ def main():
     """
     Entry point for VisionLLM Interaction Analysis pipeline.
 
+    Stages:
+      1) Data Ingestion (COCO train/val staging + manifest)
+      2) Data Validation (COCO checks + validation report)
     """
     try:
         logger.info("=== VisionLLM Interaction Analysis: Pipeline Started ===")
@@ -39,6 +44,25 @@ def main():
         logger.info("Data ingestion stage completed successfully.")
         logger.info(f"Manifest written to: {data_ingestion_artifact.manifest_file_path}")
         logger.info(f"DataIngestionArtifact: {data_ingestion_artifact}")
+
+        # ------------------------------------------------------------
+        # 3) Data Validation
+        # ------------------------------------------------------------
+        data_validation_config = DataValidationConfig(training_pipeline_config)
+
+        logger.info("Starting data validation stage...")
+        logger.info(f"Schema file: {data_validation_config.schema_file_path}")
+        logger.info(f"Require val: {data_validation_config.require_val}")
+
+        data_validation = DataValidation(
+            data_validation_config=data_validation_config,
+            data_ingestion_artifact=data_ingestion_artifact,
+        )
+        data_validation_artifact = data_validation.initiate_data_validation()
+
+        logger.info("Data validation stage completed successfully.")
+        logger.info(f"Validation report written to: {data_validation_artifact.report_file_path}")
+        logger.info(f"DataValidationArtifact: {data_validation_artifact}")
 
         logger.info("=== VisionLLM Interaction Analysis: Pipeline Finished ===")
 

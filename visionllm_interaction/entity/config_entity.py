@@ -16,6 +16,11 @@ from visionllm_interaction.constants.training_pipeline import (
     DATASET_NAME,
 )
 
+from visionllm_interaction.constants.training_pipeline import (
+    DATA_VALIDATION_DIR_NAME,
+    SCHEMA_FILE_PATH,
+    DATA_VALIDATION_REPORT_FILE,
+)
 
 class TrainingPipelineConfig:
     """
@@ -74,3 +79,39 @@ class DataIngestionConfig:
             self.data_ingestion_dir,
             DATA_INGESTION_MANIFEST_FILE,
         )
+
+class DataValidationConfig:
+    """
+    Configuration for Data Validation stage.
+
+    - Reads the ingestion manifest YAML
+    - Validates train+val images and COCO json annotations (strict)
+    - Writes a validation report YAML inside artifacts/<timestamp>/data_validation/
+    """
+
+    def __init__(self, training_pipeline_config: TrainingPipelineConfig):
+        # -----------------------------
+        # Artifact directory for stage
+        # -----------------------------
+        self.data_validation_dir: str = os.path.join(
+            training_pipeline_config.artifact_dir,
+            DATA_VALIDATION_DIR_NAME,
+        )
+
+        # -----------------------------
+        # Schema file path
+        # -----------------------------
+        self.schema_file_path: str = SCHEMA_FILE_PATH
+
+        # -----------------------------
+        # Validation report output
+        # -----------------------------
+        self.report_file_path: str = os.path.join(
+            self.data_validation_dir,
+            DATA_VALIDATION_REPORT_FILE,
+        )
+
+        # -----------------------------
+        # val is REQUIRED
+        # -----------------------------
+        self.require_val: bool = True

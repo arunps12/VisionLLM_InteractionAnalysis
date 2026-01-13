@@ -1,0 +1,86 @@
+# ============================================================
+# VisionLLM Interaction Analysis - Dataset Schema
+# Target dataset: COCO 2017 (train + val required)
+# ============================================================
+
+dataset:
+  name: "coco-2017"
+  format: "coco"
+  require_val: true
+
+manifest_schema:
+  required_top_level_keys:
+    - dataset_name
+    - dataset_format
+    - created_at
+    - ingestion
+    - paths
+    - annotations
+
+  ingestion:
+    required_keys:
+      - mode
+
+  paths:
+    required_keys:
+      - train_images
+      - val_images
+
+  annotations:
+    required_keys:
+      - train
+      - val
+
+coco_annotation_schema:
+  required_top_level_keys:
+    - images
+    - annotations
+    - categories
+
+  images:
+    required_keys:
+      - id
+      - file_name
+      - width
+      - height
+
+  annotations:
+    required_keys:
+      - id
+      - image_id
+      - category_id
+      - bbox
+      - area
+      - iscrowd
+
+    bbox:
+      length: 4
+      constraints:
+        x_min: 0
+        y_min: 0
+        w_min: 1
+        h_min: 1
+
+  categories:
+    required_keys:
+      - id
+      - name
+
+validation_policy:
+  strict: true
+
+  # Fail if any image referenced in JSON does not exist on disk
+  require_all_listed_images_on_disk: true
+
+  # Fail if any annotation references missing image_id or category_id
+  require_valid_references: true
+
+  # Fail if bbox is out of bounds or invalid
+  require_valid_bboxes: true
+
+  # Fail if categories mismatch between train and val
+  require_train_val_category_match: true
+
+  # Ensure metrics work properly
+  require_annotations_in_each_split: true
+  require_each_category_in_both_splits: true

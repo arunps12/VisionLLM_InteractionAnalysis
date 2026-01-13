@@ -66,3 +66,16 @@ DATA_INGESTION_ARTIFACT_DIR: str = (
 
 # Manifest file created by data ingestion stage
 DATA_INGESTION_MANIFEST_FILE: str = "data_manifest.yaml"
+
+# ==================================================
+# DATA VALIDATION STAGE
+# ==================================================
+
+DATA_VALIDATION_DIR_NAME: str = "data_validation"
+
+# Schema file to validate the dataset
+SCHEMA_FILE_PATH: str = "config/schema.yaml"
+
+# Report file created by validation stage
+DATA_VALIDATION_REPORT_FILE: str = "data_validation_report.yaml"
+

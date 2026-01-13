@@ -9,6 +9,8 @@ from visionllm_interaction.logger.logger import get_logger
 from visionllm_interaction.exception.custom_exception import CustomException
 from visionllm_interaction.entity.config_entity import DataIngestionConfig
 from visionllm_interaction.entity.artifact_entity import DataIngestionArtifact
+from visionllm_interaction.utils.main_utils import write_yaml
+
 
 logger = get_logger(__name__)
 
@@ -209,37 +211,35 @@ class DataIngestion:
             raise CustomException("Failed to validate raw dataset paths", e)
 
     def _write_manifest(self) -> None:
-        """Write YAML manifest consumed by downstream stages."""
         try:
             self._safe_mkdir(self.config.data_ingestion_dir)
 
             manifest_path = self.config.manifest_file_path
             created_at = datetime.now().isoformat()
 
-            
-            yaml_text = f"""dataset_name: "{self.config.dataset_name}"
-dataset_format: "{self.config.dataset_format}"
-created_at: "{created_at}"
+            manifest = {
+                "dataset_name": self.config.dataset_name,
+                "dataset_format": self.config.dataset_format,
+                "created_at": created_at,
+                "ingestion": {
+                "mode": self.config.ingestion_mode
+                },
+                "paths": {
+                    "train_images": self.config.raw_train_image_dir,
+                    "val_images": self.config.raw_val_image_dir,
+                },
+                "annotations": {
+                    "train": self.config.raw_train_annotation_file,
+                    "val": self.config.raw_val_annotation_file,
+                },
+            }
 
-ingestion:
-  mode: "{self.config.ingestion_mode}"
-
-paths:
-  train_images: "{self.config.raw_train_image_dir}"
-  val_images: "{self.config.raw_val_image_dir}"
-
-annotations:
-  train: "{self.config.raw_train_annotation_file}"
-  val: "{self.config.raw_val_annotation_file}"
-"""
-
-            with open(manifest_path, "w", encoding="utf-8") as f:
-                f.write(yaml_text)
-
+            write_yaml(manifest_path, manifest)
             logger.info(f"Wrote data manifest: {manifest_path}")
 
         except Exception as e:
             raise CustomException("Failed to write data manifest file", e)
+
 
     # ----------------------------------------------------------------------
     # Main entry
