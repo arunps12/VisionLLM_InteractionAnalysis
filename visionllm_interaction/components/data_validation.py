@@ -20,8 +20,12 @@ class DataValidation:
     """
     Validates COCO train+val dataset using:
     - ingestion manifest YAML
-    - schema.yaml (existence check for now)
+    - schema.yaml 
     - val is REQUIRED
+    - drops failed invalid bboxes up to a limit
+
+    Report path:
+      artifacts/<timestamp>/data_validation/data_validation_report.yaml
     """
 
     def __init__(
@@ -136,11 +140,31 @@ class DataValidation:
         if len(ids) != len(set(ids)):
             raise CustomException(f"Duplicate '{key}' detected in {where}")
 
+    @staticmethod
+    def _recompute_category_counts(annotations: List[Dict[str, Any]]) -> Dict[int, int]:
+        per_cat = Counter()
+        for ann in annotations:
+            cid = ann.get("category_id")
+            if cid is not None:
+                per_cat[cid] += 1
+        return dict(per_cat)
+
+    @staticmethod
+    def _count_images_with_annotations(annotations: List[Dict[str, Any]]) -> int:
+        ann_per_image = Counter()
+        for ann in annotations:
+            iid = ann.get("image_id")
+            if iid is not None:
+                ann_per_image[iid] += 1
+        return sum(1 for _, c in ann_per_image.items() if c > 0)
+
     def _validate_cross_refs_and_bbox(
         self,
         coco: Dict[str, Any],
         images_dir: str,
         split_name: str,
+        drop_invalid_bbox: bool,
+        max_invalid_bbox_allowed: int,
     ) -> Dict[str, Any]:
         """
         Strict validation:
@@ -148,11 +172,16 @@ class DataValidation:
         - annotation.category_id exists in categories
         - each images.file_name exists on disk
         - bbox is valid and inside image bounds
-        Returns stats dict.
+
+        
+        - if invalid bboxes <= max_invalid_bbox_allowed and drop_invalid_bbox=True,
+          drop those annotations and continue.
+
+        Returns stats dict (includes invalid bbox counts + examples).
         """
-        images = coco["images"]
-        annotations = coco["annotations"]
-        categories = coco["categories"]
+        images = coco.get("images", [])
+        annotations = coco.get("annotations", [])
+        categories = coco.get("categories", [])
 
         self._validate_ids_unique(images, "id", f"{split_name}.images")
         self._validate_ids_unique(annotations, "id", f"{split_name}.annotations")
@@ -164,8 +193,9 @@ class DataValidation:
         missing_files = 0
         bad_image_refs = 0
         bad_cat_refs = 0
-        invalid_bbox = 0
 
+        invalid_bbox = 0
+        invalid_bbox_ann_ids = set()
         invalid_bbox_examples: List[Dict[str, Any]] = []
         MAX_EXAMPLES = 10
 
@@ -184,9 +214,7 @@ class DataValidation:
             if not isinstance(w, (int, float)) or not isinstance(h, (int, float)) or w <= 0 or h <= 0:
                 raise CustomException(f"Invalid width/height for image_id={im.get('id')} in {split_name}")
 
-        per_cat = Counter()
-        ann_per_image = Counter()
-
+        # Validate annotations refs + bbox bounds
         for ann in annotations:
             image_id = ann.get("image_id")
             category_id = ann.get("category_id")
@@ -199,9 +227,6 @@ class DataValidation:
                 bad_cat_refs += 1
                 continue
 
-            per_cat[category_id] += 1
-            ann_per_image[image_id] += 1
-
             bbox = ann.get("bbox")
             if (
                 not isinstance(bbox, list)
@@ -209,6 +234,7 @@ class DataValidation:
                 or not all(isinstance(x, (int, float)) for x in bbox)
             ):
                 invalid_bbox += 1
+                invalid_bbox_ann_ids.add(ann.get("id"))
                 if len(invalid_bbox_examples) < MAX_EXAMPLES:
                     invalid_bbox_examples.append(
                         {
@@ -226,6 +252,7 @@ class DataValidation:
             x, y, bw, bh = bbox
             if bw <= 0 or bh <= 0 or x < 0 or y < 0:
                 invalid_bbox += 1
+                invalid_bbox_ann_ids.add(ann.get("id"))
                 if len(invalid_bbox_examples) < MAX_EXAMPLES:
                     invalid_bbox_examples.append(
                         {
@@ -244,6 +271,7 @@ class DataValidation:
             iw, ih = im["width"], im["height"]
             if (x + bw) > iw or (y + bh) > ih:
                 invalid_bbox += 1
+                invalid_bbox_ann_ids.add(ann.get("id"))
                 if len(invalid_bbox_examples) < MAX_EXAMPLES:
                     invalid_bbox_examples.append(
                         {
@@ -258,35 +286,55 @@ class DataValidation:
                     )
                 continue
 
-        # Strict failures with actionable details
+        # Hard failures first
         if missing_files > 0:
             raise CustomException(f"{split_name}: {missing_files} image files listed in JSON are missing on disk.")
         if bad_image_refs > 0:
             raise CustomException(f"{split_name}: {bad_image_refs} annotations reference missing image_id.")
         if bad_cat_refs > 0:
             raise CustomException(f"{split_name}: {bad_cat_refs} annotations reference missing category_id.")
-        if invalid_bbox > 0:
-            raise CustomException(
-                f"{split_name}: {invalid_bbox} invalid bboxes found. Examples: {invalid_bbox_examples}"
-            )
 
+        # Invalid bbox policy: drop or fail
+        dropped_invalid_bboxes = 0
+        if invalid_bbox > 0:
+            if drop_invalid_bbox and invalid_bbox <= max_invalid_bbox_allowed:
+                original_count = len(annotations)
+                annotations = [a for a in annotations if a.get("id") not in invalid_bbox_ann_ids]
+                dropped_invalid_bboxes = original_count - len(annotations)
+                coco["annotations"] = annotations  # mutate to cleaned set
+                logger.warning(
+                    f"{split_name}: dropped {dropped_invalid_bboxes} invalid bbox annotations "
+                    f"(found={invalid_bbox}, limit={max_invalid_bbox_allowed})."
+                )
+            else:
+                raise CustomException(
+                    f"{split_name}: {invalid_bbox} invalid bboxes found (limit={max_invalid_bbox_allowed}, "
+                    f"drop_invalid_bbox={drop_invalid_bbox}). Examples: {invalid_bbox_examples}"
+                )
+
+        # Usefulness checks AFTER potential dropping
         if len(images) == 0:
             raise CustomException(f"{split_name}: no images found in JSON.")
-        if len(annotations) == 0:
-            raise CustomException(f"{split_name}: no annotations found in JSON.")
+        if len(coco["annotations"]) == 0:
+            raise CustomException(f"{split_name}: no annotations found in JSON (after dropping invalid bboxes).")
         if len(categories) == 0:
             raise CustomException(f"{split_name}: no categories found in JSON.")
 
-        images_with_anns = sum(1 for _img_id, c in ann_per_image.items() if c > 0)
+        images_with_anns = self._count_images_with_annotations(coco["annotations"])
         if images_with_anns == 0:
-            raise CustomException(f"{split_name}: no image has any annotation.")
+            raise CustomException(f"{split_name}: no image has any annotation (after dropping invalid bboxes).")
+
+        per_cat_counts = self._recompute_category_counts(coco["annotations"])
 
         return {
             "num_images_json": len(images),
-            "num_annotations_json": len(annotations),
+            "num_annotations_json": len(coco["annotations"]),
             "num_categories": len(categories),
             "images_with_annotations": images_with_anns,
-            "per_category_annotation_counts": dict(per_cat),
+            "per_category_annotation_counts": per_cat_counts,
+            "invalid_bbox_found": invalid_bbox,
+            "invalid_bbox_dropped": dropped_invalid_bboxes,
+            "invalid_bbox_examples": invalid_bbox_examples,
         }
 
     def _validate_train_val_category_consistency(
@@ -313,14 +361,19 @@ class DataValidation:
             "validated": False,
             "manifest_path": getattr(self.ingestion_artifact, "manifest_file_path", None),
             "schema_path": self.config.schema_file_path,
+            "policy": {
+                "require_val": getattr(self.config, "require_val", True),
+                "drop_invalid_bbox": getattr(self.config, "drop_invalid_bbox", True),
+                "max_invalid_bbox_allowed": getattr(self.config, "max_invalid_bbox_allowed", 100),
+            },
             "error": None,
         }
 
         try:
-            logger.info("===== Data Validation Started (COCO strict train+val) =====")
+            logger.info("===== Data Validation Started (COCO train+val) =====")
             self._safe_mkdir(self.config.data_validation_dir)
 
-            # Schema must exist (content enforcement can be added later)
+           
             if not os.path.exists(self.config.schema_file_path):
                 raise CustomException(f"Schema file not found: {self.config.schema_file_path}")
 
@@ -348,14 +401,29 @@ class DataValidation:
 
             self._validate_train_val_category_consistency(train_coco, val_coco)
 
-            train_stats = self._validate_cross_refs_and_bbox(train_coco, train_images, "train")
-            val_stats = self._validate_cross_refs_and_bbox(val_coco, val_images, "val")
+            train_stats = self._validate_cross_refs_and_bbox(
+                train_coco,
+                train_images,
+                "train",
+                drop_invalid_bbox=self.config.drop_invalid_bbox,
+                max_invalid_bbox_allowed=self.config.max_invalid_bbox_allowed,
+            )
 
+            val_stats = self._validate_cross_refs_and_bbox(
+                val_coco,
+                val_images,
+                "val",
+                drop_invalid_bbox=self.config.drop_invalid_bbox,
+                max_invalid_bbox_allowed=self.config.max_invalid_bbox_allowed,
+            )
+
+            # Ensure each category appears in both splits (post-drop)
             train_cat_ids = set(train_stats["per_category_annotation_counts"].keys())
             val_cat_ids = set(val_stats["per_category_annotation_counts"].keys())
             if train_cat_ids != val_cat_ids:
                 raise CustomException(
-                    "Category presence mismatch: some categories have annotations only in train or only in val."
+                    "Category presence mismatch: some categories have annotations only in train or only in val "
+                    "(after dropping invalid bboxes)."
                 )
 
             report.update(
@@ -386,7 +454,6 @@ class DataValidation:
             )
 
         except CustomException as ce:
-            # Safe error text (don’t depend on CustomException internals)
             report["error"] = getattr(ce, "message", None) or str(ce)
             logger.error(f"Data validation failed: {report['error']}")
             raise
@@ -397,10 +464,12 @@ class DataValidation:
             raise CustomException("Error in data validation pipeline", e)
 
         finally:
-            # ALWAYS write report (PASS or FAIL)
+            # write report (PASS or FAIL)
             try:
                 self._safe_mkdir(self.config.data_validation_dir)
                 write_yaml(self.config.report_file_path, report)
+                print(f"[DataValidation] Report written to: {self.config.report_file_path}")
                 logger.info(f"Validation report written to: {self.config.report_file_path}")
             except Exception as e:
+                print(f"[DataValidation] FAILED to write report: {e}")
                 logger.error(f"Failed to write validation report: {e}")

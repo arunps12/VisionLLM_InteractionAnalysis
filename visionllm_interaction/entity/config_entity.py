@@ -20,6 +20,8 @@ from visionllm_interaction.constants.training_pipeline import (
     DATA_VALIDATION_DIR_NAME,
     SCHEMA_FILE_PATH,
     DATA_VALIDATION_REPORT_FILE,
+    DROP_INVALID_BBOX,
+    MAX_INVALID_BBOX_ALLOWED,
 )
 
 class TrainingPipelineConfig:
@@ -115,3 +117,10 @@ class DataValidationConfig:
         # val is REQUIRED
         # -----------------------------
         self.require_val: bool = True
+
+        # Policy knobs
+        self.drop_invalid_bbox: bool = DROP_INVALID_BBOX
+        self.max_invalid_bbox_allowed: int = MAX_INVALID_BBOX_ALLOWED
+
+
+        

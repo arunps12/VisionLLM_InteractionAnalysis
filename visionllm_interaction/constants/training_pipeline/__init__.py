@@ -79,3 +79,8 @@ SCHEMA_FILE_PATH: str = "config/schema.yaml"
 # Report file created by validation stage
 DATA_VALIDATION_REPORT_FILE: str = "data_validation_report.yaml"
 
+# ==================================================
+# DATA VALIDATION DEFAULT POLICY
+# ==================================================
+DROP_INVALID_BBOX: bool = True
+MAX_INVALID_BBOX_ALLOWED: int = 100
